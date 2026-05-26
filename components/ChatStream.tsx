@@ -11,7 +11,8 @@ import type { Chat } from "@/lib/types";
 
 interface Props {
   chat: Chat | null;
-  onRegenerate?: (messageId: string) => void;
+  onRegenerate?: (messageId: string, modelId?: string) => void;
+  onDelete?: (messageId: string) => void;
   onSuggestion?: (text: string) => void;
 }
 
@@ -22,7 +23,7 @@ const SUGGESTIONS = [
   { chip: "soon", titleKey: "suggest.bug.title", textKey: "suggest.bug.text" },
 ] as const satisfies ReadonlyArray<{ chip: string; titleKey: TKey; textKey: TKey }>;
 
-export function ChatStream({ chat, onRegenerate, onSuggestion }: Props) {
+export function ChatStream({ chat, onRegenerate, onDelete, onSuggestion }: Props) {
   const currentModelId = useStore((s) => s.currentModelId);
   const model = getModel(chat?.modelId ?? currentModelId);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -46,8 +47,11 @@ export function ChatStream({ chat, onRegenerate, onSuggestion }: Props) {
               key={m.id}
               message={m}
               onRegenerate={
-                m.role === "assistant" && onRegenerate ? () => onRegenerate(m.id) : undefined
+                m.role === "assistant" && onRegenerate
+                  ? (modelId) => onRegenerate(m.id, modelId)
+                  : undefined
               }
+              onDelete={onDelete ? () => onDelete(m.id) : undefined}
             />
           ))}
         </div>

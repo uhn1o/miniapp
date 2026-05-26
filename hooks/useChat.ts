@@ -69,15 +69,17 @@ export function useChat() {
   }, [settings.hapticsEnabled]);
 
   const regenerate = useCallback(
-    async (messageId: string) => {
+    async (messageId: string, modelIdOverride?: string) => {
       if (!activeChat) return;
       const idx = activeChat.messages.findIndex((m) => m.id === messageId);
       if (idx <= 0) return;
       const userMsg = activeChat.messages[idx - 1];
       if (userMsg?.role !== "user") return;
-      updateMessage(activeChat.id, messageId, { content: "", streaming: true });
 
-      const model = getModel(activeChat.modelId);
+      const modelId = modelIdOverride ?? activeChat.messages[idx].modelId ?? activeChat.modelId;
+      const model = getModel(modelId);
+      updateMessage(activeChat.id, messageId, { content: "", streaming: true, modelId });
+
       const history = activeChat.messages.slice(0, idx);
 
       const ac = new AbortController();

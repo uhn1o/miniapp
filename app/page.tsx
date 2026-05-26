@@ -15,6 +15,7 @@ export default function Home() {
   const { activeChat, isStreaming, send, stop, regenerate } = useChat();
   const newChat = useStore((s) => s.newChat);
   const chats = useStore((s) => s.chats);
+  const deleteMessage = useStore((s) => s.deleteMessage);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [suggestion, setSuggestion] = useState("");
@@ -31,6 +32,7 @@ export default function Home() {
       <ChatStream
         chat={activeChat}
         onRegenerate={regenerate}
+        onDelete={(msgId) => activeChat && deleteMessage(activeChat.id, msgId)}
         onSuggestion={(text) => setSuggestion(text)}
       />
       <Composer

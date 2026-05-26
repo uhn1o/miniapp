@@ -71,6 +71,9 @@ const DICT = {
 
     "bubble.copy": "Копіювати",
     "bubble.regen": "Перегенерувати",
+    "bubble.regenWith": "Іншою моделлю",
+    "bubble.delete": "Видалити",
+    "bubble.pickModel": "Перегенерувати моделлю",
     "bubble.copied": "скопійовано",
 
     "badge.flagship": "Флагман",
@@ -136,6 +139,9 @@ const DICT = {
 
     "bubble.copy": "Копировать",
     "bubble.regen": "Перегенерировать",
+    "bubble.regenWith": "Другой моделью",
+    "bubble.delete": "Удалить",
+    "bubble.pickModel": "Перегенерировать моделью",
     "bubble.copied": "скопировано",
 
     "badge.flagship": "Флагман",
@@ -201,6 +207,9 @@ const DICT = {
 
     "bubble.copy": "Copy",
     "bubble.regen": "Regenerate",
+    "bubble.regenWith": "Another model",
+    "bubble.delete": "Delete",
+    "bubble.pickModel": "Regenerate with model",
     "bubble.copied": "copied",
 
     "badge.flagship": "Flagship",

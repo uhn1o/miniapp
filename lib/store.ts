@@ -24,6 +24,7 @@ interface State {
   setModel: (id: string) => void;
   appendMessage: (chatId: string, msg: Message) => void;
   updateMessage: (chatId: string, msgId: string, patch: Partial<Message>) => void;
+  deleteMessage: (chatId: string, msgId: string) => void;
 
   updateSettings: (patch: Partial<AppSettings>) => void;
 }
@@ -109,6 +110,15 @@ export const useStore = create<State>()(
                   ...c,
                   messages: c.messages.map((m) => (m.id === msgId ? { ...m, ...patch } : m)),
                 }
+              : c,
+          ),
+        })),
+
+      deleteMessage: (chatId, msgId) =>
+        set((s) => ({
+          chats: s.chats.map((c) =>
+            c.id === chatId
+              ? { ...c, messages: c.messages.filter((m) => m.id !== msgId), updatedAt: Date.now() }
               : c,
           ),
         })),
