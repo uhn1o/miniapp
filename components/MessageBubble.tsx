@@ -5,7 +5,8 @@ import { Copy, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import type { Message } from "@/lib/types";
 import { getModel } from "@/lib/models";
-import { formatTime, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatTime, useT } from "@/lib/i18n";
 import { haptic } from "@/lib/telegram";
 import { useStore } from "@/lib/store";
 import { ModelLogo } from "./ModelLogo";
@@ -19,6 +20,7 @@ export function MessageBubble({ message, onRegenerate }: Props) {
   const isUser = message.role === "user";
   const model = message.modelId ? getModel(message.modelId) : null;
   const settings = useStore((s) => s.settings);
+  const { t, lang } = useT();
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -69,13 +71,13 @@ export function MessageBubble({ message, onRegenerate }: Props) {
             isUser ? "flex-row-reverse" : "flex-row",
           )}
         >
-          <span className="font-mono">{formatTime(message.createdAt)}</span>
+          <span className="font-mono">{formatTime(message.createdAt, lang)}</span>
           {!isUser && !message.streaming && (
             <>
               <button
                 onClick={copy}
                 className="rounded-full p-1 transition-colors hover:bg-secondary-400/10 active:scale-90"
-                aria-label="Копіювати"
+                aria-label={t("bubble.copy")}
               >
                 <Copy size={11} />
               </button>
@@ -83,12 +85,12 @@ export function MessageBubble({ message, onRegenerate }: Props) {
                 <button
                   onClick={onRegenerate}
                   className="rounded-full p-1 transition-colors hover:bg-secondary-400/10 active:scale-90"
-                  aria-label="Перегенерувати"
+                  aria-label={t("bubble.regen")}
                 >
                   <RotateCcw size={11} />
                 </button>
               )}
-              {copied && <span className="text-secondary-300">скопійовано</span>}
+              {copied && <span className="text-secondary-300">{t("bubble.copied")}</span>}
             </>
           )}
         </div>

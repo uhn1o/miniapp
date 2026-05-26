@@ -5,6 +5,7 @@ import { ArrowUp, Mic, Paperclip, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { haptic } from "@/lib/telegram";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   onSend: (text: string) => void;
@@ -19,6 +20,7 @@ export function Composer({ onSend, onStop, isStreaming, externalValue, onExterna
   const [value, setValue] = useState("");
   const taRef = useRef<HTMLTextAreaElement>(null);
   const settings = useStore((s) => s.settings);
+  const { t } = useT();
 
   useEffect(() => {
     if (externalValue) {
@@ -62,7 +64,7 @@ export function Composer({ onSend, onStop, isStreaming, externalValue, onExterna
         <div className="surface flex min-w-0 flex-1 items-end gap-2 rounded-[26px] px-3 py-2.5">
           <button
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-neutral-400 active:scale-90"
-            aria-label="Прикріпити"
+            aria-label={t("composer.attach")}
             onClick={() => settings.hapticsEnabled && haptic("light")}
           >
             <Paperclip size={18} />
@@ -78,14 +80,14 @@ export function Composer({ onSend, onStop, isStreaming, externalValue, onExterna
                 submit();
               }
             }}
-            placeholder="Search anything..."
+            placeholder={t("composer.placeholder")}
             rows={1}
             className="min-h-[28px] flex-1 resize-none bg-transparent py-1 text-[15px] leading-relaxed text-[var(--color-text-strong)] placeholder:text-[var(--color-text-dim)] focus:outline-none"
           />
 
           <button
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-neutral-400 active:scale-90"
-            aria-label="Голосове"
+            aria-label={t("composer.voice")}
             onClick={() => settings.hapticsEnabled && haptic("light")}
           >
             <Mic size={18} />
@@ -102,7 +104,7 @@ export function Composer({ onSend, onStop, isStreaming, externalValue, onExterna
               if (settings.hapticsEnabled) haptic("heavy");
               onStop?.();
             }}
-            aria-label="Зупинити"
+            aria-label={t("composer.stop")}
           >
             <Square size={18} fill="currentColor" />
           </motion.button>
@@ -114,7 +116,7 @@ export function Composer({ onSend, onStop, isStreaming, externalValue, onExterna
             disabled={!value.trim()}
             className="btn-primary grid h-12 w-12 shrink-0 place-items-center rounded-full disabled:opacity-40 disabled:saturate-50"
             onClick={submit}
-            aria-label="Надіслати"
+            aria-label={t("composer.send")}
           >
             <ArrowUp size={20} strokeWidth={2.6} />
           </motion.button>

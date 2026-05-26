@@ -34,5 +34,5 @@ export interface AppSettings {
   hapticsEnabled: boolean;
   sendOnEnter: boolean;
   showModelBadges: boolean;
-  language: "uk" | "en";
+  language: "uk" | "ru" | "en";
 }

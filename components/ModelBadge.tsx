@@ -3,6 +3,7 @@
 import { Sparkles, Zap, Crown } from "lucide-react";
 import type { ModelInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useT, type TKey } from "@/lib/i18n";
 
 const TIER_ICON = {
   flagship: Crown,
@@ -10,11 +11,11 @@ const TIER_ICON = {
   fast: Zap,
 } as const;
 
-const TIER_LABEL = {
-  flagship: "Флагман",
-  balanced: "Збалансована",
-  fast: "Швидка",
-} as const;
+const TIER_LABEL_KEY: Record<ModelInfo["tier"], TKey> = {
+  flagship: "badge.flagship",
+  balanced: "badge.balanced",
+  fast: "badge.fast",
+};
 
 interface Props {
   model: ModelInfo;
@@ -24,6 +25,7 @@ interface Props {
 
 export function ModelBadge({ model, size = "sm", className }: Props) {
   const Icon = TIER_ICON[model.tier];
+  const { t } = useT();
   return (
     <span
       className={cn(
@@ -34,7 +36,7 @@ export function ModelBadge({ model, size = "sm", className }: Props) {
       style={{ background: "rgba(167,191,165,0.08)", color: "var(--color-secondary-300)" }}
     >
       <Icon size={size === "sm" ? 10 : 12} strokeWidth={2.2} />
-      <span className="font-mono uppercase tracking-[0.14em]">{TIER_LABEL[model.tier]}</span>
+      <span className="font-mono uppercase tracking-[0.14em]">{t(TIER_LABEL_KEY[model.tier])}</span>
     </span>
   );
 }

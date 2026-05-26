@@ -9,6 +9,7 @@ import { ModelBadge } from "./ModelBadge";
 import { ModelLogo } from "./ModelLogo";
 import { Sheet } from "./Sheet";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   open: boolean;
@@ -23,6 +24,7 @@ export function ModelPicker({ open, onOpenChange }: Props) {
   const setModel = useStore((s) => s.setModel);
   const settings = useStore((s) => s.settings);
   const current = getModel(currentModelId);
+  const { t } = useT();
 
   return (
     <>
@@ -45,16 +47,16 @@ export function ModelPicker({ open, onOpenChange }: Props) {
         <ChevronDown size={16} className="shrink-0 text-[var(--color-text-muted)]" />
       </motion.button>
 
-      <Sheet open={open} onClose={() => onOpenChange(false)} title="Обери модель">
+      <Sheet open={open} onClose={() => onOpenChange(false)} title={t("picker.title")}>
         <div className="mb-4 rounded-[22px] border border-[var(--color-app-line)] bg-secondary-400/10 p-4">
           <div className="mb-2 flex items-center gap-2 text-secondary-300">
             <Leaf size={16} />
             <span className="font-display text-sm font-semibold text-[var(--color-text-strong)]">
-              Спокійний режим
+              {t("picker.calmTitle")}
             </span>
           </div>
           <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">
-            Демо-версія. Моделі перемикаються миттєво, а відповіді стрімляться локально.
+            {t("picker.calmDesc")}
           </p>
         </div>
 

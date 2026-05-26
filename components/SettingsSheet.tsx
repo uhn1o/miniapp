@@ -1,29 +1,33 @@
 "use client";
 
-import { Globe, Info, Send, Sparkles, Vibrate } from "lucide-react";
+import { Globe, Send, Sparkles, Vibrate } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Sheet } from "./Sheet";
 import { haptic } from "@/lib/telegram";
 import { cn } from "@/lib/utils";
+import { LANG_LABELS, useT, type Lang } from "@/lib/i18n";
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
+const LANGS: Lang[] = ["uk", "ru", "en"];
+
 export function SettingsSheet({ open, onClose }: Props) {
   const settings = useStore((s) => s.settings);
   const update = useStore((s) => s.updateSettings);
+  const { t } = useT();
 
   return (
-    <Sheet open={open} onClose={onClose} title="Налаштування">
+    <Sheet open={open} onClose={onClose} title={t("settings.title")}>
       <div className="space-y-3">
-        <SectionTitle>Інтерфейс</SectionTitle>
+        <SectionTitle>{t("settings.section.ui")}</SectionTitle>
 
         <SettingRow
           icon={<Vibrate size={18} />}
-          title="Haptic Feedback"
-          description="Тактильна віддача на дотиках"
+          title={t("settings.haptics.title")}
+          description={t("settings.haptics.desc")}
         >
           <Toggle
             value={settings.hapticsEnabled}
@@ -36,21 +40,21 @@ export function SettingsSheet({ open, onClose }: Props) {
 
         <SettingRow
           icon={<Send size={18} />}
-          title="Enter — надіслати"
-          description="Інакше Enter додає новий рядок"
+          title={t("settings.enter.title")}
+          description={t("settings.enter.desc")}
         >
           <Toggle value={settings.sendOnEnter} onChange={(v) => update({ sendOnEnter: v })} />
         </SettingRow>
 
         <SettingRow
           icon={<Sparkles size={18} />}
-          title="Бейджі моделей"
-          description="Показувати тип (флагман / швидка)"
+          title={t("settings.badges.title")}
+          description={t("settings.badges.desc")}
         >
           <Toggle value={settings.showModelBadges} onChange={(v) => update({ showModelBadges: v })} />
         </SettingRow>
 
-        <SectionTitle>Локалізація</SectionTitle>
+        <SectionTitle>{t("settings.section.locale")}</SectionTitle>
 
         <div className="surface-soft rounded-[22px] p-3">
           <div className="flex items-center gap-3">
@@ -58,12 +62,12 @@ export function SettingsSheet({ open, onClose }: Props) {
               <Globe size={18} />
             </span>
             <div className="flex-1">
-              <p className="font-display text-[15px] font-semibold text-[var(--color-text-strong)]">Мова</p>
-              <p className="text-[12px] text-[var(--color-text-muted)]">Інтерфейс застосунку</p>
+              <p className="font-display text-[15px] font-semibold text-[var(--color-text-strong)]">{t("settings.lang.title")}</p>
+              <p className="text-[12px] text-[var(--color-text-muted)]">{t("settings.lang.desc")}</p>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {(["uk", "en"] as const).map((lang) => (
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {LANGS.map((lang) => (
               <button
                 key={lang}
                 onClick={() => update({ language: lang })}
@@ -72,23 +76,9 @@ export function SettingsSheet({ open, onClose }: Props) {
                   settings.language === lang ? "btn-primary" : "btn-outlined",
                 )}
               >
-                {lang === "uk" ? "Українська" : "English"}
+                {LANG_LABELS[lang]}
               </button>
             ))}
-          </div>
-        </div>
-
-        <SectionTitle>Про застосунок</SectionTitle>
-
-        <div className="surface-soft flex items-start gap-3 rounded-[22px] p-4">
-          <span className="icon-soft grid h-10 w-10 shrink-0 place-items-center rounded-full">
-            <Info size={18} />
-          </span>
-          <div>
-            <p className="font-display text-[15px] font-semibold text-[var(--color-text-strong)]">Olive AI • TMA</p>
-            <p className="mt-1 text-[13px] leading-relaxed text-[var(--color-text-muted)]">
-              Демо-версія мульти-модельного AI чату всередині Telegram. Версія 0.1.0
-            </p>
           </div>
         </div>
       </div>

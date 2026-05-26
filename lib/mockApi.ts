@@ -1,38 +1,52 @@
-import type { ModelInfo } from "./types";
+import type { Message, ModelInfo } from "./types";
 
-const SAMPLE_RESPONSES: Record<string, string[]> = {
-  default: [
-    "Цікаве питання. Дай-но подумати... ",
-    "Ось як я це бачу: технічна частина задачі зводиться до двох речей — структура даних та поведінка інтерфейсу. ",
-    "Якщо хочеш, можу запропонувати конкретний підхід з кодом. Які саме обмеження для тебе критичні?",
-  ],
-  code: [
-    "Звісно, ось приклад:\n\n```ts\nfunction debounce<T extends (...a: any[]) => void>(fn: T, ms = 200) {\n  let t: ReturnType<typeof setTimeout>;\n  return (...args: Parameters<T>) => {\n    clearTimeout(t);\n    t = setTimeout(() => fn(...args), ms);\n  };\n}\n```\n\nЦя функція ",
-    "затримує виклик `fn` на `ms` мілісекунд після останнього виклику. Корисно для пошуку, ресайзу, скролу.",
-  ],
-};
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8787";
 
-function pickResponse(prompt: string): string {
-  const lower = prompt.toLowerCase();
-  if (lower.includes("код") || lower.includes("code") || lower.includes("function")) {
-    return SAMPLE_RESPONSES.code.join("");
-  }
-  return SAMPLE_RESPONSES.default.join("");
-}
+type ApiMessage = { role: "user" | "assistant"; content: string };
 
 export async function* streamReply(
-  prompt: string,
+  history: Message[],
   model: ModelInfo,
   signal?: AbortSignal,
 ): AsyncGenerator<string> {
-  const full = `**${model.shortName}** • ${pickResponse(prompt)}`;
-  const tokens = full.match(/.{1,3}/g) ?? [full];
+  const messages: ApiMessage[] = history
+    .filter((m) => m.content.length > 0)
+    .map((m) => ({ role: m.role, content: m.content }));
 
-  const baseDelay = model.tier === "fast" ? 12 : model.tier === "balanced" ? 22 : 32;
+  const resp = await fetch(`${BACKEND_URL}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: model.id, messages }),
+    signal,
+  });
 
-  for (const token of tokens) {
-    if (signal?.aborted) return;
-    await new Promise((r) => setTimeout(r, baseDelay + Math.random() * 14));
-    yield token;
+  if (!resp.ok || !resp.body) {
+    throw new Error(`backend ${resp.status}`);
+  }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+
+    let idx;
+    while ((idx = buf.indexOf("\n\n")) !== -1) {
+      const raw = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 2);
+      if (!raw.startsWith("data:")) continue;
+      const payload = raw.slice(5).trim();
+      if (payload === "[DONE]") return;
+      try {
+        const obj = JSON.parse(payload);
+        if (obj.error) throw new Error(obj.error);
+        if (typeof obj.delta === "string") yield obj.delta;
+      } catch (e) {
+        if (e instanceof Error && e.message !== payload) throw e;
+      }
+    }
   }
 }

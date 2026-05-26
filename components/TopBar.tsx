@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ModelPicker } from "./ModelPicker";
 import { haptic } from "@/lib/telegram";
 import { useStore } from "@/lib/store";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   onHistory: () => void;
@@ -17,6 +18,7 @@ export function TopBar({ onHistory, onSettings }: Props) {
   const newChat = useStore((s) => s.newChat);
   const currentModelId = useStore((s) => s.currentModelId);
   const settings = useStore((s) => s.settings);
+  const { t } = useT();
 
   const tap = () => settings.hapticsEnabled && haptic("light");
 
@@ -34,7 +36,7 @@ export function TopBar({ onHistory, onSettings }: Props) {
             onHistory();
           }}
           className="icon-soft grid h-11 w-11 shrink-0 place-items-center rounded-full"
-          aria-label="Історія"
+          aria-label={t("topbar.history")}
         >
           <History size={19} />
         </button>
@@ -49,7 +51,7 @@ export function TopBar({ onHistory, onSettings }: Props) {
             newChat(currentModelId);
           }}
           className="btn-primary grid h-11 w-11 shrink-0 place-items-center rounded-full"
-          aria-label="Новий чат"
+          aria-label={t("topbar.newChat")}
         >
           <Plus size={20} strokeWidth={2.6} />
         </button>
@@ -60,7 +62,7 @@ export function TopBar({ onHistory, onSettings }: Props) {
             onSettings();
           }}
           className="icon-soft grid h-11 w-11 shrink-0 place-items-center rounded-full"
-          aria-label="Налаштування"
+          aria-label={t("topbar.settings")}
         >
           <Settings size={19} />
         </button>

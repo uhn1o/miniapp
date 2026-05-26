@@ -38,9 +38,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="uk" className={`${display.variable} ${body.variable} ${mono.variable}`}>
-      <body>
-        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+    <html
+      lang="uk"
+      className={`${display.variable} ${body.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
+      <body suppressHydrationWarning>
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
         <main className="relative z-10 min-h-dvh overflow-hidden">{children}</main>
       </body>
     </html>

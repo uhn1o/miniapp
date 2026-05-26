@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   open: boolean;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function Sheet({ open, onClose, title, children, footer, maxHeight = "85vh" }: Props) {
+  const { t } = useT();
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -65,7 +67,7 @@ export function Sheet({ open, onClose, title, children, footer, maxHeight = "85v
                 <button
                   onClick={onClose}
                   className="icon-soft grid h-9 w-9 place-items-center rounded-full"
-                  aria-label="Закрити"
+                  aria-label={t("sheet.close")}
                 >
                   <X size={18} />
                 </button>

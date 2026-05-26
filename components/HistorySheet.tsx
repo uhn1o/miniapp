@@ -7,7 +7,8 @@ import { useStore } from "@/lib/store";
 import { getModel } from "@/lib/models";
 import { Sheet } from "./Sheet";
 import { ModelLogo } from "./ModelLogo";
-import { formatRelative, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatRelative, useT } from "@/lib/i18n";
 import { haptic } from "@/lib/telegram";
 
 interface Props {
@@ -24,6 +25,7 @@ export function HistorySheet({ open, onClose }: Props) {
   const newChat = useStore((s) => s.newChat);
   const settings = useStore((s) => s.settings);
   const [confirmClear, setConfirmClear] = useState(false);
+  const { t, lang } = useT();
 
   useEffect(() => {
     if (!open) setConfirmClear(false);
@@ -33,7 +35,7 @@ export function HistorySheet({ open, onClose }: Props) {
     <Sheet
       open={open}
       onClose={onClose}
-      title="Історія розмов"
+      title={t("history.title")}
       footer={
         chats.length > 0 ? (
           confirmClear ? (
@@ -46,7 +48,7 @@ export function HistorySheet({ open, onClose }: Props) {
                 onClick={() => setConfirmClear(false)}
                 className="ripple flex-1 rounded-full border border-[var(--color-app-line)] bg-tertiary-700/42 py-2.5 text-sm font-semibold text-[var(--color-text-strong)] active:bg-tertiary-700/68"
               >
-                Скасувати
+                {t("history.cancel")}
               </button>
               <button
                 onClick={() => {
@@ -58,7 +60,7 @@ export function HistorySheet({ open, onClose }: Props) {
                 className="ripple flex-1 rounded-full py-2.5 text-sm font-semibold text-neutral-50 active:scale-[0.98]"
                 style={{ background: "var(--color-danger)" }}
               >
-                Так, видалити все
+                {t("history.confirmClear")}
               </button>
             </motion.div>
           ) : (
@@ -70,7 +72,7 @@ export function HistorySheet({ open, onClose }: Props) {
               className="ripple flex w-full items-center justify-center gap-2 rounded-full border border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 py-2.5 text-sm font-semibold text-[var(--color-danger)] active:bg-[var(--color-danger)]/18"
             >
               <Trash2 size={15} />
-              Очистити всі чати
+              {t("history.clearAll")}
             </button>
           )
         ) : null
@@ -81,9 +83,9 @@ export function HistorySheet({ open, onClose }: Props) {
           <div className="icon-soft mb-3 grid h-14 w-14 place-items-center rounded-full">
             <MessageSquare size={24} />
           </div>
-          <p className="font-display text-[17px] font-semibold text-[var(--color-text-strong)]">Поки що порожньо</p>
+          <p className="font-display text-[17px] font-semibold text-[var(--color-text-strong)]">{t("history.empty.title")}</p>
           <p className="mt-1 max-w-[240px] text-sm text-[var(--color-text-muted)]">
-            Почни нову розмову — вона зʼявиться тут.
+            {t("history.empty.subtitle")}
           </p>
           <button
             className="btn-primary mt-5 rounded-full px-5 py-2.5 text-sm font-semibold"
@@ -93,7 +95,7 @@ export function HistorySheet({ open, onClose }: Props) {
               onClose();
             }}
           >
-            Нова розмова
+            {t("history.newChat")}
           </button>
         </div>
       ) : (
@@ -132,14 +134,14 @@ export function HistorySheet({ open, onClose }: Props) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <h3 className="truncate font-display text-[15px] font-semibold text-[var(--color-text-strong)]">
-                        {chat.title}
+                        {chat.title || t("chat.defaultTitle")}
                       </h3>
                       <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-text-dim)]">
-                        {formatRelative(chat.updatedAt)}
+                        {formatRelative(chat.updatedAt, lang)}
                       </span>
                     </div>
                     <p className="mt-0.5 truncate text-[13px] text-[var(--color-text-muted)]">
-                      {last ? last.content.slice(0, 80) : "Порожня розмова"}
+                      {last ? last.content.slice(0, 80) : t("history.emptyChat")}
                     </p>
                     <span className="chip chip-beta mt-1.5">{model.shortName}</span>
                   </div>
@@ -151,7 +153,7 @@ export function HistorySheet({ open, onClose }: Props) {
                       if (settings.hapticsEnabled) haptic("heavy");
                     }}
                     className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--color-text-dim)] transition-colors hover:bg-[var(--color-danger)]/16 hover:text-[var(--color-danger)] active:scale-90"
-                    aria-label="Видалити"
+                    aria-label={t("history.delete")}
                   >
                     <Trash2 size={15} />
                   </button>

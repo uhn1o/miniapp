@@ -47,7 +47,7 @@ export const useStore = create<State>()(
         const id = uid();
         const chat: Chat = {
           id,
-          title: "Нова розмова",
+          title: "",
           modelId: modelId ?? get().currentModelId,
           messages: [],
           createdAt: Date.now(),

@@ -25,13 +25,17 @@ export function useChat() {
       if (!chatId) {
         chatId = newChat();
       }
-      const modelId = activeChat?.modelId ?? currentModelId;
+      const chat = useStore.getState().chats.find((c) => c.id === chatId);
+      const modelId = chat?.modelId ?? currentModelId;
       const model = getModel(modelId);
 
-      appendMessage(chatId, makeMessage("user", text));
+      const userMsg = makeMessage("user", text);
+      appendMessage(chatId, userMsg);
       const reply = makeMessage("assistant", "", modelId);
       reply.streaming = true;
       appendMessage(chatId, reply);
+
+      const history = [...(chat?.messages ?? []), userMsg];
 
       const ac = new AbortController();
       abortRef.current = ac;
@@ -39,20 +43,24 @@ export function useChat() {
 
       try {
         let acc = "";
-        for await (const token of streamReply(text, model, ac.signal)) {
+        for await (const token of streamReply(history, model, ac.signal)) {
           acc += token;
           updateMessage(chatId, reply.id, { content: acc });
         }
         updateMessage(chatId, reply.id, { streaming: false });
         if (settings.hapticsEnabled) hapticNotify("success");
-      } catch {
-        updateMessage(chatId, reply.id, { streaming: false });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "error";
+        updateMessage(chatId, reply.id, {
+          content: `⚠️ ${msg}`,
+          streaming: false,
+        });
       } finally {
         setIsStreaming(false);
         abortRef.current = null;
       }
     },
-    [activeChatId, activeChat, currentModelId, newChat, appendMessage, updateMessage, settings.hapticsEnabled],
+    [activeChatId, currentModelId, newChat, appendMessage, updateMessage, settings.hapticsEnabled],
   );
 
   const stop = useCallback(() => {
@@ -70,16 +78,21 @@ export function useChat() {
       updateMessage(activeChat.id, messageId, { content: "", streaming: true });
 
       const model = getModel(activeChat.modelId);
+      const history = activeChat.messages.slice(0, idx);
+
       const ac = new AbortController();
       abortRef.current = ac;
       setIsStreaming(true);
 
       try {
         let acc = "";
-        for await (const token of streamReply(userMsg.content, model, ac.signal)) {
+        for await (const token of streamReply(history, model, ac.signal)) {
           acc += token;
           updateMessage(activeChat.id, messageId, { content: acc });
         }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "error";
+        updateMessage(activeChat.id, messageId, { content: `⚠️ ${msg}` });
       } finally {
         updateMessage(activeChat.id, messageId, { streaming: false });
         setIsStreaming(false);

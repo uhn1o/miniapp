@@ -1,11 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { MessageSquarePlus, Leaf } from "lucide-react";
+import { Leaf } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useStore } from "@/lib/store";
 import { getModel } from "@/lib/models";
 import { MessageBubble } from "./MessageBubble";
+import { useT, type TKey } from "@/lib/i18n";
 import type { Chat } from "@/lib/types";
 
 interface Props {
@@ -15,11 +16,11 @@ interface Props {
 }
 
 const SUGGESTIONS = [
-  { chip: "new", title: "Поясни код", text: "Поясни мені цей фрагмент коду рядок за рядком" },
-  { chip: "premium", title: "Напиши пост", text: "Напиши короткий пост для соцмереж про..." },
-  { chip: "beta", title: "Згенеруй ідеї", text: "Дай 5 креативних ідей для..." },
-  { chip: "soon", title: "Знайди баг", text: "Допоможи знайти помилку в цьому коді:" },
-] as const;
+  { chip: "new", titleKey: "suggest.code.title", textKey: "suggest.code.text" },
+  { chip: "premium", titleKey: "suggest.post.title", textKey: "suggest.post.text" },
+  { chip: "beta", titleKey: "suggest.ideas.title", textKey: "suggest.ideas.text" },
+  { chip: "soon", titleKey: "suggest.bug.title", textKey: "suggest.bug.text" },
+] as const satisfies ReadonlyArray<{ chip: string; titleKey: TKey; textKey: TKey }>;
 
 export function ChatStream({ chat, onRegenerate, onSuggestion }: Props) {
   const currentModelId = useStore((s) => s.currentModelId);
@@ -62,6 +63,7 @@ function EmptyState({
   model: ReturnType<typeof getModel>;
   onSuggestion?: (text: string) => void;
 }) {
+  const { t } = useT();
   return (
     <motion.div
       className="mx-auto flex max-w-xl flex-col items-center pt-6 text-center"
@@ -81,14 +83,14 @@ function EmptyState({
         variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
         className="font-display text-[28px] font-bold leading-tight tracking-tight text-[var(--color-text-strong)]"
       >
-        Привіт. Я <span className="text-secondary-300">{model.shortName}</span>
+        {t("chat.greeting")} <span className="text-secondary-300">{model.shortName}</span>
       </motion.h1>
 
       <motion.p
         variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
         className="mt-2 max-w-sm text-[15px] leading-relaxed text-[var(--color-text-muted)]"
       >
-        Спокійний AI-чат у Telegram стилі: без зайвого шуму, з мʼякими оливковими акцентами.
+        {t("chat.subtitle")}
       </motion.p>
 
       <motion.div
@@ -97,29 +99,21 @@ function EmptyState({
       >
         {SUGGESTIONS.map((s, i) => (
           <motion.button
-            key={s.title}
+            key={s.titleKey}
             variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
             transition={{ delay: 0.16 + i * 0.04 }}
-            onClick={() => onSuggestion?.(s.text)}
+            onClick={() => onSuggestion?.(t(s.textKey))}
             className="ripple surface-soft group flex min-h-[118px] flex-col items-start gap-3 rounded-[22px] p-4 text-left active:scale-[0.98]"
           >
             <span className={`chip chip-${s.chip}`}>{s.chip}</span>
             <span className="font-display text-[16px] font-semibold text-[var(--color-text-strong)]">
-              {s.title}
+              {t(s.titleKey)}
             </span>
             <span className="line-clamp-2 text-[12px] leading-relaxed text-[var(--color-text-muted)]">
-              {s.text}
+              {t(s.textKey)}
             </span>
           </motion.button>
         ))}
-      </motion.div>
-
-      <motion.div
-        variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }}
-        className="mt-8 inline-flex items-center gap-2 rounded-full border border-[var(--color-app-line)] bg-tertiary-700/34 px-3 py-1.5 text-[11px] text-[var(--color-text-muted)]"
-      >
-        <MessageSquarePlus size={12} />
-        <span className="font-mono uppercase tracking-[0.14em]">Demo • mock streaming</span>
       </motion.div>
     </motion.div>
   );
