@@ -1,4 +1,5 @@
 import type { Message, ModelInfo } from "./types";
+import { tg } from "./telegram";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8787";
 
@@ -13,13 +14,24 @@ export async function* streamReply(
     .filter((m) => m.content.length > 0)
     .map((m) => ({ role: m.role, content: m.content }));
 
+  const initData = tg()?.initData ?? "";
+  if (!initData) {
+    throw new Error("Open this app from Telegram");
+  }
+
   const resp = await fetch(`${BACKEND_URL}/api/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Telegram-Init-Data": initData,
+    },
     body: JSON.stringify({ model: model.id, messages }),
     signal,
   });
 
+  if (resp.status === 401) {
+    throw new Error("Unauthorized — open via Telegram bot");
+  }
   if (!resp.ok || !resp.body) {
     throw new Error(`backend ${resp.status}`);
   }
