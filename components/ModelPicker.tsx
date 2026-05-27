@@ -1,9 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { MODELS, getModel } from "@/lib/models";
+import { getModel } from "@/lib/models";
+import { useModels } from "@/hooks/useModels";
 import { hapticSelection } from "@/lib/telegram";
 import { useStore } from "@/lib/store";
 import { ModelBadge } from "./ModelBadge";
@@ -21,8 +22,18 @@ export function ModelPicker({ open, onOpenChange }: Props) {
   const currentModelId = useStore((s) => s.currentModelId);
   const setModel = useStore((s) => s.setModel);
   const settings = useStore((s) => s.settings);
-  const current = getModel(currentModelId);
+  const { models, status } = useModels();
+  // Якщо поточна модель є в списку — беремо її; інакше декоруємо ID на льоту.
+  const current = models.find((m) => m.id === currentModelId) ?? getModel(currentModelId);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Якщо адмін зняв публікацію поточної моделі — переключитися на першу доступну.
+  useEffect(() => {
+    if (status !== "ready" || models.length === 0) return;
+    if (!models.some((m) => m.id === currentModelId)) {
+      setModel(models[0].id);
+    }
+  }, [status, models, currentModelId, setModel]);
 
   useEffect(() => {
     if (!open) return;
@@ -76,7 +87,23 @@ export function ModelPicker({ open, onOpenChange }: Props) {
             transition={{ duration: 0.16 }}
             className="surface absolute left-0 right-0 top-full z-40 mt-2 max-h-[60vh] overflow-y-auto rounded-2xl border border-[var(--color-app-line)] p-1.5 shadow-[var(--shadow-press)]"
           >
-            {MODELS.map((m) => {
+            {status === "loading" && models.length === 0 && (
+              <div className="flex items-center justify-center gap-2 px-3 py-4 text-[12px] text-[var(--color-text-muted)]">
+                <Loader2 size={14} className="animate-spin" />
+                Завантаження моделей…
+              </div>
+            )}
+            {status === "ready" && models.length === 0 && (
+              <div className="px-3 py-4 text-center text-[12px] text-[var(--color-text-muted)]">
+                Немає доступних моделей
+              </div>
+            )}
+            {status === "error" && (
+              <div className="px-3 py-4 text-center text-[12px] text-[#e2998f]">
+                Помилка завантаження
+              </div>
+            )}
+            {models.map((m) => {
               const selected = m.id === currentModelId;
               return (
                 <button

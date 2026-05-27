@@ -5,7 +5,8 @@ import { Copy, RotateCcw, Sparkles, Trash2, Check } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
 import type { Message } from "@/lib/types";
-import { MODELS, getModel } from "@/lib/models";
+import { getModel } from "@/lib/models";
+import { useModels } from "@/hooks/useModels";
 import { cn } from "@/lib/utils";
 import { formatTime, useT } from "@/lib/i18n";
 import { haptic, hapticSelection } from "@/lib/telegram";
@@ -23,6 +24,7 @@ export function MessageBubble({ message, onRegenerate, onDelete }: Props) {
   const isUser = message.role === "user";
   const model = message.modelId ? getModel(message.modelId) : null;
   const settings = useStore((s) => s.settings);
+  const { models: availableModels } = useModels();
   const { t, lang } = useT();
   const [copied, setCopied] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -154,7 +156,12 @@ export function MessageBubble({ message, onRegenerate, onDelete }: Props) {
       {!isUser && onRegenerate && (
         <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title={t("bubble.pickModel")}>
           <div className="space-y-2">
-            {MODELS.map((m) => {
+            {availableModels.length === 0 && (
+              <p className="px-2 py-4 text-center text-[12px] text-[var(--color-text-muted)]">
+                Немає доступних моделей
+              </p>
+            )}
+            {availableModels.map((m) => {
               const selected = m.id === message.modelId;
               return (
                 <button
