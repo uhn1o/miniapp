@@ -132,12 +132,21 @@ export const useStore = create<State>()(
     {
       name: "aurora-tma-store",
       storage: createJSONStorage(() => localStorage),
+      version: 2,
       partialize: (s) => ({
         chats: s.chats,
         activeChatId: s.activeChatId,
         currentModelId: s.currentModelId,
         settings: s.settings,
       }),
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<State>;
+        return {
+          ...current,
+          ...p,
+          settings: { ...defaultSettings, ...(p.settings ?? {}) },
+        };
+      },
     },
   ),
 );
