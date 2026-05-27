@@ -9,7 +9,6 @@ import {
   Check,
   Eye,
   EyeOff,
-  Key,
   Loader2,
   RefreshCw,
   Shield,
@@ -24,18 +23,16 @@ import {
   type AdminModel,
   type AdminSubscription,
   type AdminUser,
-  type ApiKeyInfo,
 } from "@/lib/adminApi";
 import { cn } from "@/lib/utils";
 import { haptic, hapticNotify } from "@/lib/telegram";
 
-type Tab = "users" | "subs" | "models" | "key";
+type Tab = "users" | "subs" | "models";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "users", label: "Пользователи" },
   { id: "subs", label: "Подписки" },
   { id: "models", label: "Модели" },
-  { id: "key", label: "API ключ" },
 ];
 
 export default function AdminPage() {
@@ -100,7 +97,6 @@ export default function AdminPage() {
         {tab === "users" && <UsersTab />}
         {tab === "subs" && <SubscriptionsTab />}
         {tab === "models" && <ModelsTab />}
-        {tab === "key" && <ApiKeyTab />}
       </div>
     </main>
   );
@@ -512,91 +508,7 @@ function ActionBtn({
 }
 
 // ----- API key tab ---------------------------------------------------------
-
-function ApiKeyTab() {
-  const [info, setInfo] = useState<ApiKeyInfo | null>(null);
-  const [value, setValue] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      setInfo(await adminApi.getApiKey());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  const save = async () => {
-    if (!value.trim()) return;
-    setSaving(true);
-    try {
-      await adminApi.setApiKey(value.trim());
-      hapticNotify("success");
-      setValue("");
-      await load();
-    } catch {
-      hapticNotify("error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="surface-soft rounded-[22px] p-4">
-        <div className="flex items-center gap-3">
-          <span className="icon-soft grid h-10 w-10 place-items-center rounded-full">
-            <Key size={18} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-[15px] font-semibold text-[var(--color-text-strong)]">
-              Текущий ключ
-            </p>
-            {loading ? (
-              <p className="text-[12px] text-[var(--color-text-muted)]">…</p>
-            ) : (
-              <p className="truncate font-mono text-[12px] text-[var(--color-text-muted)]">
-                {info?.set ? info.preview : "не установлен (используется значение из config.py)"}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="surface-soft rounded-[22px] p-3">
-        <p className="font-display text-[14px] font-semibold text-[var(--color-text-strong)]">
-          Заменить ключ
-        </p>
-        <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
-          Применяется без перезапуска. Кеш моделей сразу обновляется.
-        </p>
-        <div className="mt-3 flex items-center gap-2">
-          <input
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="wf_..."
-            type="password"
-            autoComplete="off"
-            className="flex-1 rounded-2xl bg-tertiary-700/55 px-3 py-2.5 font-mono text-[13px] text-[var(--color-text-strong)] placeholder:text-[var(--color-text-dim)] focus:outline-none"
-          />
-          <button
-            onClick={save}
-            disabled={!value.trim() || saving}
-            className="btn-primary rounded-full px-4 py-2.5 font-display text-[13px] font-semibold disabled:opacity-50"
-          >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : "Сохранить"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// (видалено: ключ беремо тільки з config.py)
 
 // ----- shared --------------------------------------------------------------
 

@@ -61,7 +61,18 @@ export async function* streamReply(
     throw new Error("Unauthorized — open via Telegram bot");
   }
   if (!resp.ok || !resp.body) {
-    throw new Error(`backend ${resp.status}`);
+    let detail = "";
+    try {
+      const j = await resp.json();
+      if (j?.error) detail = `: ${j.error}`;
+    } catch {
+      try {
+        detail = `: ${(await resp.text()).slice(0, 200)}`;
+      } catch {
+        // ignore
+      }
+    }
+    throw new Error(`backend ${resp.status}${detail}`);
   }
 
   const reader = resp.body.getReader();

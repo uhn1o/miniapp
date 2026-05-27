@@ -41,11 +41,6 @@ export interface AdminModel {
   last_seen: number;
 }
 
-export interface ApiKeyInfo {
-  set: boolean;
-  preview: string;
-}
-
 class AdminApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -110,14 +105,6 @@ export const adminApi = {
     request<{ ok: true }>("/api/admin/subscriptions", {
       method: "DELETE",
       body: JSON.stringify({ user_id }),
-    }),
-
-  getApiKey: () => request<ApiKeyInfo>("/api/admin/api-key"),
-
-  setApiKey: (api_key: string) =>
-    request<{ ok: true }>("/api/admin/api-key", {
-      method: "POST",
-      body: JSON.stringify({ api_key }),
     }),
 
   listModels: () => request<{ models: AdminModel[] }>("/api/admin/models"),
