@@ -6,6 +6,7 @@ import { buildModelInfo } from "@/lib/models";
 import type { ModelInfo } from "@/lib/types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8787";
+const BG_REFRESH_MS = 30_000; // тихий рефетч раз на 30с
 
 interface ApiModel {
   id: string;
@@ -20,9 +21,19 @@ type Status = "loading" | "ready" | "error";
 let cache: ModelInfo[] | null = null;
 let inflight: Promise<ModelInfo[]> | null = null;
 const listeners = new Set<(s: Status, m: ModelInfo[]) => void>();
+let bgTimer: ReturnType<typeof setInterval> | null = null;
+let visListenerInstalled = false;
 
 function publish(status: Status, models: ModelInfo[]) {
   listeners.forEach((l) => l(status, models));
+}
+
+function sameList(a: ModelInfo[], b: ModelInfo[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id) return false;
+  }
+  return true;
 }
 
 function waitForInitData(timeoutMs = 3000): Promise<string> {
@@ -44,14 +55,15 @@ async function load(): Promise<ModelInfo[]> {
     const initData = await waitForInitData();
     if (!initData) {
       console.warn("[useModels] no initData — opened outside Telegram?");
-      return [];
+      return cache ?? [];
     }
     const resp = await fetch(`${BACKEND_URL}/api/models`, {
       headers: { "X-Telegram-Init-Data": initData },
+      cache: "no-store",
     });
     if (!resp.ok) {
       console.warn("[useModels] /api/models", resp.status);
-      return [];
+      return cache ?? [];
     }
     const data = (await resp.json()) as { models: ApiModel[] };
     const list = (data.models ?? []).map((m) =>
@@ -65,6 +77,34 @@ async function load(): Promise<ModelInfo[]> {
     return await inflight;
   } finally {
     inflight = null;
+  }
+}
+
+/** Тихий рефетч у фоні: оновлює підписників лише якщо список реально змінився. */
+async function silentRefresh() {
+  if (typeof document !== "undefined" && document.hidden) return;
+  try {
+    const prev = cache;
+    const list = await load();
+    if (!prev || !sameList(prev, list)) {
+      publish("ready", list);
+    }
+  } catch (e) {
+    console.warn("[useModels] silent refresh error", e);
+  }
+}
+
+function ensureBackgroundRefresh() {
+  if (typeof window === "undefined") return;
+  if (!visListenerInstalled) {
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) silentRefresh();
+    });
+    window.addEventListener("focus", silentRefresh);
+    visListenerInstalled = true;
+  }
+  if (bgTimer === null) {
+    bgTimer = setInterval(silentRefresh, BG_REFRESH_MS);
   }
 }
 
@@ -91,6 +131,7 @@ export function useModels(): { models: ModelInfo[]; status: Status; reload: () =
       setModels(m);
     };
     listeners.add(cb);
+    ensureBackgroundRefresh();
 
     if (cache === null && !inflight) {
       load()
@@ -102,6 +143,8 @@ export function useModels(): { models: ModelInfo[]; status: Status; reload: () =
     } else if (cache) {
       setModels(cache);
       setStatus("ready");
+      // навіть з кешу — спробуємо тихо підтягнути актуальне
+      silentRefresh();
     }
 
     return () => {
