@@ -7,16 +7,16 @@ import {
   ArrowLeft,
   Ban,
   Check,
-  Eye,
-  EyeOff,
   Loader2,
   RefreshCw,
   Shield,
   Trash2,
   UserCheck,
   Users,
+  X,
 } from "lucide-react";
 import { useOwner } from "@/hooks/useOwner";
+import { invalidateModelsCache } from "@/hooks/useModels";
 import {
   adminApi,
   type AdminBan,
@@ -363,6 +363,7 @@ function ModelsTab() {
     try {
       const r = await adminApi.refreshModels();
       setModels(r.models);
+      invalidateModelsCache();
       hapticNotify("success");
     } catch {
       hapticNotify("error");
@@ -375,6 +376,7 @@ function ModelsTab() {
     try {
       await adminApi.setModel(m.id, status, pub);
       hapticNotify("success");
+      invalidateModelsCache();
       await load();
     } catch {
       hapticNotify("error");
@@ -412,8 +414,8 @@ function ModelsTab() {
                   <ActionBtn onClick={() => update(m, "approved", true)} title="одобрить публично">
                     <Check size={14} />
                   </ActionBtn>
-                  <ActionBtn onClick={() => update(m, "hidden")} title="скрыть">
-                    <EyeOff size={14} />
+                  <ActionBtn onClick={() => update(m, "hidden")} title="отказать">
+                    <X size={14} />
                   </ActionBtn>
                 </>
               }
@@ -430,17 +432,9 @@ function ModelsTab() {
               key={m.id}
               model={m}
               actions={
-                <>
-                  <ActionBtn
-                    onClick={() => update(m, "approved", !m.public)}
-                    title={m.public ? "скрыть от публики" : "показать всем"}
-                  >
-                    {m.public ? <Eye size={14} /> : <EyeOff size={14} />}
-                  </ActionBtn>
-                  <ActionBtn onClick={() => update(m, "hidden")} title="убрать">
-                    <Trash2 size={14} />
-                  </ActionBtn>
-                </>
+                <ActionBtn onClick={() => update(m, "hidden")} title="убрать в скрытые">
+                  <Trash2 size={14} />
+                </ActionBtn>
               }
             />
           ))}

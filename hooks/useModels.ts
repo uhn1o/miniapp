@@ -68,6 +68,19 @@ async function load(): Promise<ModelInfo[]> {
   }
 }
 
+/** Скинути кеш та одразу перезавантажити для всіх підписників. */
+export function invalidateModelsCache() {
+  cache = null;
+  inflight = null;
+  publish("loading", []);
+  load()
+    .then((list) => publish("ready", list))
+    .catch((e) => {
+      console.error("[useModels] invalidate reload error", e);
+      publish("error", []);
+    });
+}
+
 export function useModels(): { models: ModelInfo[]; status: Status; reload: () => void } {
   const [models, setModels] = useState<ModelInfo[]>(cache ?? []);
   const [status, setStatus] = useState<Status>(cache ? "ready" : "loading");
