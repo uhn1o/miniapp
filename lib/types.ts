@@ -12,6 +12,13 @@ export interface ModelInfo {
   accent: string;
 }
 
+export interface Attachment {
+  type: "image";
+  dataUrl: string;
+  mime: string;
+  name?: string;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -19,6 +26,7 @@ export interface Message {
   createdAt: number;
   modelId?: string;
   streaming?: boolean;
+  attachments?: Attachment[];
 }
 
 export interface Chat {
@@ -34,5 +42,8 @@ export interface AppSettings {
   hapticsEnabled: boolean;
   sendOnEnter: boolean;
   showModelBadges: boolean;
+  thinkingEnabled: boolean;
+  temperature: number;
+  maxTokens: number;
   language: "uk" | "ru" | "en";
 }

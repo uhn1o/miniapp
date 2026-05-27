@@ -1,12 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { History, Plus, Settings } from "lucide-react";
+import { History, Plus, Settings, Shield } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ModelPicker } from "./ModelPicker";
 import { haptic } from "@/lib/telegram";
 import { useStore } from "@/lib/store";
 import { useT } from "@/lib/i18n";
+import { useOwner } from "@/hooks/useOwner";
 
 interface Props {
   onHistory: () => void;
@@ -19,6 +21,8 @@ export function TopBar({ onHistory, onSettings }: Props) {
   const currentModelId = useStore((s) => s.currentModelId);
   const settings = useStore((s) => s.settings);
   const { t } = useT();
+  const ownerStatus = useOwner();
+  const router = useRouter();
 
   const tap = () => settings.hapticsEnabled && haptic("light");
 
@@ -55,6 +59,20 @@ export function TopBar({ onHistory, onSettings }: Props) {
         >
           <Plus size={20} strokeWidth={2.6} />
         </button>
+
+        {ownerStatus === "owner" && (
+          <button
+            onClick={() => {
+              tap();
+              router.push("/admin");
+            }}
+            className="icon-soft grid h-11 w-11 shrink-0 place-items-center rounded-full"
+            aria-label={t("topbar.admin")}
+            title={t("topbar.admin")}
+          >
+            <Shield size={19} />
+          </button>
+        )}
 
         <button
           onClick={() => {

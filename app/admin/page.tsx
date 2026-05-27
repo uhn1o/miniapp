@@ -1,0 +1,620 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+  ArrowLeft,
+  Ban,
+  Check,
+  Eye,
+  EyeOff,
+  Key,
+  Loader2,
+  RefreshCw,
+  Shield,
+  Trash2,
+  UserCheck,
+  Users,
+} from "lucide-react";
+import { useOwner } from "@/hooks/useOwner";
+import {
+  adminApi,
+  type AdminBan,
+  type AdminModel,
+  type AdminSubscription,
+  type AdminUser,
+  type ApiKeyInfo,
+} from "@/lib/adminApi";
+import { cn } from "@/lib/utils";
+import { haptic, hapticNotify } from "@/lib/telegram";
+
+type Tab = "users" | "subs" | "models" | "key";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "users", label: "Пользователи" },
+  { id: "subs", label: "Подписки" },
+  { id: "models", label: "Модели" },
+  { id: "key", label: "API ключ" },
+];
+
+export default function AdminPage() {
+  const owner = useOwner();
+  const router = useRouter();
+  const [tab, setTab] = useState<Tab>("users");
+
+  useEffect(() => {
+    if (owner === "denied") router.replace("/");
+  }, [owner, router]);
+
+  if (owner !== "owner") {
+    return (
+      <div className="grid min-h-screen place-items-center text-[var(--color-text-muted)]">
+        <Loader2 className="animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <main className="mx-auto min-h-screen w-full max-w-xl px-3 pb-24 pt-3 safe-top">
+      <header className="flex items-center gap-2">
+        <button
+          onClick={() => router.back()}
+          className="icon-soft grid h-11 w-11 shrink-0 place-items-center rounded-full"
+          aria-label="back"
+        >
+          <ArrowLeft size={19} />
+        </button>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="icon-soft grid h-9 w-9 place-items-center rounded-full">
+            <Shield size={16} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="font-display text-[18px] font-semibold leading-tight text-[var(--color-text-strong)]">
+              Админ-панель
+            </h1>
+            <p className="text-[12px] text-[var(--color-text-muted)]">Только для владельцев</p>
+          </div>
+        </div>
+      </header>
+
+      <div className="mt-4 flex gap-1.5 overflow-x-auto">
+        {TABS.map((tt) => (
+          <button
+            key={tt.id}
+            onClick={() => {
+              haptic("light");
+              setTab(tt.id);
+            }}
+            className={cn(
+              "shrink-0 rounded-full px-4 py-2 font-display text-[13px] font-semibold transition-colors",
+              tab === tt.id ? "btn-primary" : "btn-outlined",
+            )}
+          >
+            {tt.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        {tab === "users" && <UsersTab />}
+        {tab === "subs" && <SubscriptionsTab />}
+        {tab === "models" && <ModelsTab />}
+        {tab === "key" && <ApiKeyTab />}
+      </div>
+    </main>
+  );
+}
+
+// ----- Users tab -----------------------------------------------------------
+
+function UsersTab() {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [bans, setBans] = useState<AdminBan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<number | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await adminApi.listUsers();
+      setUsers(r.users);
+      setBans(r.bans);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const bannedSet = new Set(bans.map((b) => b.user_id));
+
+  const toggleBan = async (u: AdminUser) => {
+    setBusy(u.user_id);
+    try {
+      if (bannedSet.has(u.user_id)) {
+        await adminApi.unban(u.user_id);
+      } else {
+        await adminApi.ban(u.user_id);
+      }
+      hapticNotify("success");
+      await load();
+    } catch {
+      hapticNotify("error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div className="space-y-2">
+      <SectionHint icon={<Users size={14} />}>
+        Все, кто нажал /start. Бан блокирует доступ к чату и API.
+      </SectionHint>
+      {users.length === 0 && <EmptyState text="Пока нет пользователей" />}
+      {users.map((u) => {
+        const banned = bannedSet.has(u.user_id);
+        const handle = u.username ? `@${u.username}` : "—";
+        const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ") || "—";
+        return (
+          <motion.div
+            key={u.user_id}
+            layout
+            className="surface-soft flex items-center gap-3 rounded-[20px] p-3"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="truncate font-display text-[14px] font-semibold text-[var(--color-text-strong)]">
+                  {fullName}
+                </p>
+                {banned && (
+                  <span className="chip chip-soon" style={{ background: "rgba(198,107,98,0.18)", color: "#e2998f" }}>
+                    бан
+                  </span>
+                )}
+              </div>
+              <p className="truncate text-[12px] text-[var(--color-text-muted)]">
+                {handle} · ID <span className="font-mono">{u.user_id}</span>
+              </p>
+              <p className="truncate text-[11px] text-[var(--color-text-dim)]">
+                {u.messages} сообщ. · {u.language || "—"}
+              </p>
+            </div>
+            <button
+              onClick={() => toggleBan(u)}
+              disabled={busy === u.user_id}
+              className={cn(
+                "grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors",
+                banned ? "btn-primary" : "icon-soft",
+              )}
+              aria-label={banned ? "разбанить" : "забанить"}
+            >
+              {busy === u.user_id ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : banned ? (
+                <UserCheck size={16} />
+              ) : (
+                <Ban size={16} />
+              )}
+            </button>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ----- Subscriptions tab ---------------------------------------------------
+
+function SubscriptionsTab() {
+  const [items, setItems] = useState<AdminSubscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState("");
+  const [plan, setPlan] = useState("pro");
+  const [days, setDays] = useState("30");
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await adminApi.listSubscriptions();
+      setItems(r.subscriptions);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const grant = async () => {
+    const id = parseInt(userId, 10);
+    if (!id) return;
+    setSaving(true);
+    try {
+      const expires = days
+        ? Math.floor(Date.now() / 1000) + parseInt(days, 10) * 24 * 60 * 60
+        : null;
+      await adminApi.setSubscription(id, plan, expires);
+      hapticNotify("success");
+      setUserId("");
+      await load();
+    } catch {
+      hapticNotify("error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancel = async (id: number) => {
+    try {
+      await adminApi.cancelSubscription(id);
+      hapticNotify("success");
+      await load();
+    } catch {
+      hapticNotify("error");
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="surface-soft rounded-[22px] p-3">
+        <p className="font-display text-[14px] font-semibold text-[var(--color-text-strong)]">
+          Выдать подписку
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <input
+            value={userId}
+            onChange={(e) => setUserId(e.target.value.replace(/\D/g, ""))}
+            placeholder="User ID"
+            inputMode="numeric"
+            className="rounded-2xl bg-tertiary-700/55 px-3 py-2.5 font-mono text-[13px] text-[var(--color-text-strong)] placeholder:text-[var(--color-text-dim)] focus:outline-none"
+          />
+          <input
+            value={plan}
+            onChange={(e) => setPlan(e.target.value)}
+            placeholder="План (pro / lite)"
+            className="rounded-2xl bg-tertiary-700/55 px-3 py-2.5 text-[13px] text-[var(--color-text-strong)] placeholder:text-[var(--color-text-dim)] focus:outline-none"
+          />
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            value={days}
+            onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))}
+            placeholder="Дней (пусто = бессрочно)"
+            inputMode="numeric"
+            className="flex-1 rounded-2xl bg-tertiary-700/55 px-3 py-2.5 text-[13px] text-[var(--color-text-strong)] placeholder:text-[var(--color-text-dim)] focus:outline-none"
+          />
+          <button
+            onClick={grant}
+            disabled={!userId || saving}
+            className="btn-primary rounded-full px-4 py-2.5 font-display text-[13px] font-semibold disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : "Выдать"}
+          </button>
+        </div>
+      </div>
+
+      <SectionHint>Активные подписки</SectionHint>
+      {loading && <Spinner />}
+      {!loading && items.length === 0 && <EmptyState text="Пусто" />}
+      {items.map((s) => (
+        <div key={s.user_id} className="surface-soft flex items-center gap-3 rounded-[20px] p-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-[14px] font-semibold text-[var(--color-text-strong)]">
+              {s.plan}
+            </p>
+            <p className="truncate text-[12px] text-[var(--color-text-muted)]">
+              ID <span className="font-mono">{s.user_id}</span> ·{" "}
+              {s.expires_at
+                ? `до ${new Date(s.expires_at * 1000).toLocaleDateString()}`
+                : "бессрочно"}
+            </p>
+          </div>
+          <button
+            onClick={() => cancel(s.user_id)}
+            className="icon-soft grid h-10 w-10 place-items-center rounded-full"
+            aria-label="отменить"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ----- Models tab ----------------------------------------------------------
+
+function ModelsTab() {
+  const [models, setModels] = useState<AdminModel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await adminApi.listModels();
+      setModels(r.models);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      const r = await adminApi.refreshModels();
+      setModels(r.models);
+      hapticNotify("success");
+    } catch {
+      hapticNotify("error");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const update = async (m: AdminModel, status: AdminModel["status"], pub?: boolean) => {
+    try {
+      await adminApi.setModel(m.id, status, pub);
+      hapticNotify("success");
+      await load();
+    } catch {
+      hapticNotify("error");
+    }
+  };
+
+  const grouped = {
+    pending: models.filter((m) => m.status === "pending"),
+    approved: models.filter((m) => m.status === "approved"),
+    hidden: models.filter((m) => m.status === "hidden"),
+  };
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={refresh}
+        disabled={refreshing}
+        className="btn-outlined flex w-full items-center justify-center gap-2 rounded-full py-2.5 font-display text-[13px] font-semibold disabled:opacity-50"
+      >
+        {refreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+        Обновить из Wellflow
+      </button>
+
+      {grouped.pending.length > 0 && (
+        <>
+          <SectionHint>Ожидают одобрения</SectionHint>
+          {grouped.pending.map((m) => (
+            <ModelRow
+              key={m.id}
+              model={m}
+              actions={
+                <>
+                  <ActionBtn onClick={() => update(m, "approved", true)} title="одобрить публично">
+                    <Check size={14} />
+                  </ActionBtn>
+                  <ActionBtn onClick={() => update(m, "hidden")} title="скрыть">
+                    <EyeOff size={14} />
+                  </ActionBtn>
+                </>
+              }
+            />
+          ))}
+        </>
+      )}
+
+      {grouped.approved.length > 0 && (
+        <>
+          <SectionHint>Одобренные</SectionHint>
+          {grouped.approved.map((m) => (
+            <ModelRow
+              key={m.id}
+              model={m}
+              actions={
+                <>
+                  <ActionBtn
+                    onClick={() => update(m, "approved", !m.public)}
+                    title={m.public ? "скрыть от публики" : "показать всем"}
+                  >
+                    {m.public ? <Eye size={14} /> : <EyeOff size={14} />}
+                  </ActionBtn>
+                  <ActionBtn onClick={() => update(m, "hidden")} title="убрать">
+                    <Trash2 size={14} />
+                  </ActionBtn>
+                </>
+              }
+            />
+          ))}
+        </>
+      )}
+
+      {grouped.hidden.length > 0 && (
+        <>
+          <SectionHint>Скрытые</SectionHint>
+          {grouped.hidden.map((m) => (
+            <ModelRow
+              key={m.id}
+              model={m}
+              actions={
+                <ActionBtn onClick={() => update(m, "approved", true)} title="вернуть">
+                  <Check size={14} />
+                </ActionBtn>
+              }
+            />
+          ))}
+        </>
+      )}
+
+      {models.length === 0 && <EmptyState text="Пока ничего" />}
+    </div>
+  );
+}
+
+function ModelRow({ model, actions }: { model: AdminModel; actions: React.ReactNode }) {
+  return (
+    <div className="surface-soft flex items-center gap-3 rounded-[20px] p-3">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-display text-[14px] font-semibold text-[var(--color-text-strong)]">
+          {model.display_name || model.id}
+        </p>
+        <p className="truncate font-mono text-[11px] text-[var(--color-text-muted)]">{model.id}</p>
+        <p className="text-[11px] text-[var(--color-text-dim)]">
+          {[model.vendor, model.family].filter(Boolean).join(" · ") || "—"}
+          {model.public ? " · публичная" : ""}
+        </p>
+      </div>
+      <div className="flex shrink-0 gap-1.5">{actions}</div>
+    </div>
+  );
+}
+
+function ActionBtn({
+  onClick,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className="icon-soft grid h-9 w-9 place-items-center rounded-full"
+    >
+      {children}
+    </button>
+  );
+}
+
+// ----- API key tab ---------------------------------------------------------
+
+function ApiKeyTab() {
+  const [info, setInfo] = useState<ApiKeyInfo | null>(null);
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setInfo(await adminApi.getApiKey());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const save = async () => {
+    if (!value.trim()) return;
+    setSaving(true);
+    try {
+      await adminApi.setApiKey(value.trim());
+      hapticNotify("success");
+      setValue("");
+      await load();
+    } catch {
+      hapticNotify("error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="surface-soft rounded-[22px] p-4">
+        <div className="flex items-center gap-3">
+          <span className="icon-soft grid h-10 w-10 place-items-center rounded-full">
+            <Key size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-[15px] font-semibold text-[var(--color-text-strong)]">
+              Текущий ключ
+            </p>
+            {loading ? (
+              <p className="text-[12px] text-[var(--color-text-muted)]">…</p>
+            ) : (
+              <p className="truncate font-mono text-[12px] text-[var(--color-text-muted)]">
+                {info?.set ? info.preview : "не установлен (используется значение из config.py)"}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="surface-soft rounded-[22px] p-3">
+        <p className="font-display text-[14px] font-semibold text-[var(--color-text-strong)]">
+          Заменить ключ
+        </p>
+        <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
+          Применяется без перезапуска. Кеш моделей сразу обновляется.
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="wf_..."
+            type="password"
+            autoComplete="off"
+            className="flex-1 rounded-2xl bg-tertiary-700/55 px-3 py-2.5 font-mono text-[13px] text-[var(--color-text-strong)] placeholder:text-[var(--color-text-dim)] focus:outline-none"
+          />
+          <button
+            onClick={save}
+            disabled={!value.trim() || saving}
+            className="btn-primary rounded-full px-4 py-2.5 font-display text-[13px] font-semibold disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : "Сохранить"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----- shared --------------------------------------------------------------
+
+function Spinner() {
+  return (
+    <div className="flex justify-center py-8 text-[var(--color-text-muted)]">
+      <Loader2 className="animate-spin" />
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-[20px] border border-dashed border-[var(--color-app-line)] py-10 text-center text-[13px] text-[var(--color-text-muted)]">
+      {text}
+    </div>
+  );
+}
+
+function SectionHint({
+  children,
+  icon,
+}: {
+  children: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 px-1 pt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-dim)]">
+      {icon}
+      {children}
+    </div>
+  );
+}

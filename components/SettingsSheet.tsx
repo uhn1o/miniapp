@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, Send, Sparkles, Vibrate } from "lucide-react";
+import { Brain, Globe, Send, Sparkles, Thermometer, Type, Vibrate } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Sheet } from "./Sheet";
 import { haptic } from "@/lib/telegram";
@@ -53,6 +53,83 @@ export function SettingsSheet({ open, onClose }: Props) {
         >
           <Toggle value={settings.showModelBadges} onChange={(v) => update({ showModelBadges: v })} />
         </SettingRow>
+
+        <SettingRow
+          icon={<Brain size={18} />}
+          title={t("settings.thinking.title")}
+          description={t("settings.thinking.desc")}
+        >
+          <Toggle
+            value={settings.thinkingEnabled}
+            onChange={(v) => {
+              update({ thinkingEnabled: v });
+              if (settings.hapticsEnabled) haptic("light");
+            }}
+          />
+        </SettingRow>
+
+        <SectionTitle>{t("settings.section.generation")}</SectionTitle>
+
+        <div className="surface-soft rounded-[22px] p-3">
+          <div className="flex items-center gap-3">
+            <span className="icon-soft grid h-10 w-10 shrink-0 place-items-center rounded-full">
+              <Thermometer size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-[15px] font-semibold text-[var(--color-text-strong)]">
+                {t("settings.temperature.title")}
+              </p>
+              <p className="truncate text-[12px] text-[var(--color-text-muted)]">
+                {t("settings.temperature.desc")}
+              </p>
+            </div>
+            <span className="font-mono text-[13px] tabular-nums text-secondary-300">
+              {settings.temperature.toFixed(1)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={2}
+            step={0.1}
+            value={settings.temperature}
+            onChange={(e) => update({ temperature: Number(e.target.value) })}
+            className="range-slim mt-3 w-full"
+          />
+        </div>
+
+        <div className="surface-soft rounded-[22px] p-3">
+          <div className="flex items-center gap-3">
+            <span className="icon-soft grid h-10 w-10 shrink-0 place-items-center rounded-full">
+              <Type size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-[15px] font-semibold text-[var(--color-text-strong)]">
+                {t("settings.maxTokens.title")}
+              </p>
+              <p className="truncate text-[12px] text-[var(--color-text-muted)]">
+                {t("settings.maxTokens.desc")}
+              </p>
+            </div>
+            <span className="font-mono text-[13px] tabular-nums text-secondary-300">
+              {settings.maxTokens}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={256}
+            max={8192}
+            step={256}
+            value={settings.maxTokens}
+            onChange={(e) => update({ maxTokens: Number(e.target.value) })}
+            className="range-slim mt-3 w-full"
+          />
+          <div className="mt-1.5 flex justify-between font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+            <span>{t("settings.maxTokens.short")}</span>
+            <span>{t("settings.maxTokens.medium")}</span>
+            <span>{t("settings.maxTokens.long")}</span>
+          </div>
+        </div>
 
         <SectionTitle>{t("settings.section.locale")}</SectionTitle>
 

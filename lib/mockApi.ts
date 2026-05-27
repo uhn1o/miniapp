@@ -3,20 +3,48 @@ import { tg } from "./telegram";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8787";
 
-type ApiMessage = { role: "user" | "assistant"; content: string };
+type TextPart = { type: "text"; text: string };
+type ImagePart = { type: "image_url"; image_url: { url: string } };
+type ApiContent = string | Array<TextPart | ImagePart>;
+type ApiMessage = { role: "user" | "assistant"; content: ApiContent };
+
+function toApiMessage(m: Message): ApiMessage {
+  const imgs = m.attachments?.filter((a) => a.type === "image") ?? [];
+  if (imgs.length === 0) {
+    return { role: m.role, content: m.content };
+  }
+  const parts: Array<TextPart | ImagePart> = [];
+  if (m.content) parts.push({ type: "text", text: m.content });
+  for (const a of imgs) {
+    parts.push({ type: "image_url", image_url: { url: a.dataUrl } });
+  }
+  return { role: m.role, content: parts };
+}
 
 export async function* streamReply(
   history: Message[],
   model: ModelInfo,
   signal?: AbortSignal,
+  opts?: { thinking?: boolean; temperature?: number; maxTokens?: number },
 ): AsyncGenerator<string> {
   const messages: ApiMessage[] = history
-    .filter((m) => m.content.length > 0)
-    .map((m) => ({ role: m.role, content: m.content }));
+    .filter((m) => m.content.length > 0 || (m.attachments && m.attachments.length > 0))
+    .map(toApiMessage);
 
   const initData = tg()?.initData ?? "";
   if (!initData) {
     throw new Error("Open this app from Telegram");
+  }
+
+  const body: Record<string, unknown> = { model: model.id, messages };
+  if (opts?.thinking && model.family === "claude") {
+    body.thinking = { type: "enabled", budget_tokens: 4000 };
+  }
+  if (typeof opts?.temperature === "number") {
+    body.temperature = opts.temperature;
+  }
+  if (typeof opts?.maxTokens === "number" && opts.maxTokens > 0) {
+    body.max_tokens = opts.maxTokens;
   }
 
   const resp = await fetch(`${BACKEND_URL}/api/chat`, {
@@ -25,7 +53,7 @@ export async function* streamReply(
       "Content-Type": "application/json",
       "X-Telegram-Init-Data": initData,
     },
-    body: JSON.stringify({ model: model.id, messages }),
+    body: JSON.stringify(body),
     signal,
   });
 

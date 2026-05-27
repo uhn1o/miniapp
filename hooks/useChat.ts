@@ -5,6 +5,7 @@ import { useStore, makeMessage } from "@/lib/store";
 import { getModel } from "@/lib/models";
 import { streamReply } from "@/lib/mockApi";
 import { haptic, hapticNotify } from "@/lib/telegram";
+import type { Attachment } from "@/lib/types";
 
 export function useChat() {
   const chats = useStore((s) => s.chats);
@@ -20,7 +21,7 @@ export function useChat() {
   const abortRef = useRef<AbortController | null>(null);
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, attachments?: Attachment[]) => {
       let chatId = activeChatId;
       if (!chatId) {
         chatId = newChat();
@@ -29,7 +30,7 @@ export function useChat() {
       const modelId = chat?.modelId ?? currentModelId;
       const model = getModel(modelId);
 
-      const userMsg = makeMessage("user", text);
+      const userMsg = makeMessage("user", text, undefined, attachments);
       appendMessage(chatId, userMsg);
       const reply = makeMessage("assistant", "", modelId);
       reply.streaming = true;
@@ -43,7 +44,11 @@ export function useChat() {
 
       try {
         let acc = "";
-        for await (const token of streamReply(history, model, ac.signal)) {
+        for await (const token of streamReply(history, model, ac.signal, {
+          thinking: settings.thinkingEnabled,
+          temperature: settings.temperature,
+          maxTokens: settings.maxTokens,
+        })) {
           acc += token;
           updateMessage(chatId, reply.id, { content: acc });
         }
@@ -60,7 +65,7 @@ export function useChat() {
         abortRef.current = null;
       }
     },
-    [activeChatId, currentModelId, newChat, appendMessage, updateMessage, settings.hapticsEnabled],
+    [activeChatId, currentModelId, newChat, appendMessage, updateMessage, settings.hapticsEnabled, settings.thinkingEnabled, settings.temperature, settings.maxTokens],
   );
 
   const stop = useCallback(() => {
@@ -88,7 +93,11 @@ export function useChat() {
 
       try {
         let acc = "";
-        for await (const token of streamReply(history, model, ac.signal)) {
+        for await (const token of streamReply(history, model, ac.signal, {
+          thinking: settings.thinkingEnabled,
+          temperature: settings.temperature,
+          maxTokens: settings.maxTokens,
+        })) {
           acc += token;
           updateMessage(activeChat.id, messageId, { content: acc });
         }
@@ -101,7 +110,7 @@ export function useChat() {
         abortRef.current = null;
       }
     },
-    [activeChat, updateMessage],
+    [activeChat, updateMessage, settings.thinkingEnabled, settings.temperature, settings.maxTokens],
   );
 
   return { activeChat, isStreaming, send, stop, regenerate };

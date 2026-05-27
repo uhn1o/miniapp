@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Copy, RotateCcw, Sparkles, Trash2, Check } from "lucide-react";
 import { useState } from "react";
+import Image from "next/image";
 import type { Message } from "@/lib/types";
 import { MODELS, getModel } from "@/lib/models";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,36 @@ export function MessageBubble({ message, onRegenerate, onDelete }: Props) {
               : "surface-soft rounded-[22px] rounded-bl-md text-[var(--color-text-strong)]",
           )}
         >
+          {message.attachments && message.attachments.length > 0 && (
+            <div
+              className={cn(
+                "grid gap-1.5",
+                message.content ? "mb-2" : "",
+                message.attachments.length === 1 ? "grid-cols-1" : "grid-cols-2",
+              )}
+            >
+              {message.attachments.map((a, i) =>
+                a.type === "image" ? (
+                  <a
+                    key={i}
+                    href={a.dataUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="block overflow-hidden rounded-2xl border border-[var(--color-app-line)]"
+                  >
+                    <Image
+                      src={a.dataUrl}
+                      alt={a.name ?? "image"}
+                      width={320}
+                      height={320}
+                      unoptimized
+                      className="h-40 w-full object-cover"
+                    />
+                  </a>
+                ) : null,
+              )}
+            </div>
+          )}
           {renderContent(message.content)}
           {message.streaming && (
             <span className="ml-1 inline-flex translate-y-0.5 gap-1">

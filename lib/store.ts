@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Chat, Message, AppSettings } from "./types";
+import type { Chat, Message, AppSettings, Attachment } from "./types";
 import { DEFAULT_MODEL_ID } from "./models";
 
 function uid() {
@@ -33,6 +33,9 @@ const defaultSettings: AppSettings = {
   hapticsEnabled: true,
   sendOnEnter: false,
   showModelBadges: true,
+  thinkingEnabled: false,
+  temperature: 1.0,
+  maxTokens: 2048,
   language: "uk",
 };
 
@@ -139,12 +142,18 @@ export const useStore = create<State>()(
   ),
 );
 
-export function makeMessage(role: "user" | "assistant", content: string, modelId?: string): Message {
+export function makeMessage(
+  role: "user" | "assistant",
+  content: string,
+  modelId?: string,
+  attachments?: Attachment[],
+): Message {
   return {
     id: uid(),
     role,
     content,
     createdAt: Date.now(),
     modelId,
+    ...(attachments && attachments.length > 0 ? { attachments } : {}),
   };
 }
