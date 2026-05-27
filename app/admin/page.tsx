@@ -113,13 +113,19 @@ function UsersTab() {
   const [bans, setBans] = useState<AdminBan[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
+    setError(null);
     try {
       const r = await adminApi.listUsers();
+      console.info("[admin/users] loaded", r);
       setUsers(r.users);
       setBans(r.bans);
+    } catch (e) {
+      console.error("[admin/users] load failed", e);
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -155,7 +161,13 @@ function UsersTab() {
       <SectionHint icon={<Users size={14} />}>
         Все, кто нажал /start. Бан блокирует доступ к чату и API.
       </SectionHint>
-      {users.length === 0 && <EmptyState text="Пока нет пользователей" />}
+      {error && (
+        <div className="rounded-[20px] border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 p-3 text-[12px] text-[#e2998f]">
+          Ошибка загрузки: {error}
+          <button onClick={load} className="ml-2 underline">повторить</button>
+        </div>
+      )}
+      {!error && users.length === 0 && <EmptyState text="Пока нет пользователей" />}
       {users.map((u) => {
         const banned = bannedSet.has(u.user_id);
         const handle = u.username ? `@${u.username}` : "—";
