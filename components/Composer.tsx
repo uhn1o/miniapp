@@ -20,6 +20,12 @@ interface Props {
 
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 const MAX_IMAGES_PER_MSG = 4;
+const ALLOWED_IMAGE_MIME = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+]);
+const ACCEPT_ATTR = "image/png,image/jpeg";
 
 export function Composer({ onSend, onStop, isStreaming, externalValue, onExternalConsumed, bottomOffset = 0 }: Props) {
   const [value, setValue] = useState("");
@@ -59,7 +65,10 @@ export function Composer({ onSend, onStop, isStreaming, externalValue, onExterna
     const list = Array.from(files).slice(0, slots);
     const next: Attachment[] = [];
     for (const f of list) {
-      if (!f.type.startsWith("image/")) continue;
+      if (!ALLOWED_IMAGE_MIME.has(f.type.toLowerCase())) {
+        if (settings.hapticsEnabled) hapticNotify("error");
+        continue;
+      }
       if (f.size > MAX_IMAGE_BYTES) {
         if (settings.hapticsEnabled) hapticNotify("error");
         continue;
@@ -97,7 +106,7 @@ export function Composer({ onSend, onStop, isStreaming, externalValue, onExterna
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPT_ATTR}
         multiple
         className="hidden"
         onChange={(e) => onPickFiles(e.target.files)}

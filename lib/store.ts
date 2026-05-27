@@ -19,7 +19,6 @@ interface State {
   setActiveChat: (id: string) => void;
   deleteChat: (id: string) => void;
   clearAllChats: () => void;
-  renameChat: (id: string, title: string) => void;
 
   setModel: (id: string) => void;
   appendMessage: (chatId: string, msg: Message) => void;
@@ -71,11 +70,6 @@ export const useStore = create<State>()(
         }),
 
       clearAllChats: () => set({ chats: [], activeChatId: null }),
-
-      renameChat: (id, title) =>
-        set((s) => ({
-          chats: s.chats.map((c) => (c.id === id ? { ...c, title } : c)),
-        })),
 
       setModel: (id) =>
         set((s) => {

@@ -69,7 +69,3 @@ export function hapticSelection() {
 export function hapticNotify(type: NotificationType) {
   tg()?.HapticFeedback.notificationOccurred(type);
 }
-
-export function getUser() {
-  return tg()?.initDataUnsafe.user ?? null;
-}

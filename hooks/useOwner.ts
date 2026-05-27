@@ -16,14 +16,17 @@ function publish(next: Status) {
 async function probe() {
   if (cached === "owner" || cached === "denied") return;
   try {
-    await adminApi.whoami();
+    const res = await adminApi.whoami();
+    console.info("[useOwner] whoami ok", res);
     publish("owner");
   } catch (e) {
     if (e instanceof AdminApiError) {
-      publish("denied");
+      // 403 — авторизован, но не овнер; 401 — нет initData / просрочена; 5xx — бэк лежит
+      console.warn("[useOwner] whoami failed", e.status, e.message);
     } else {
-      publish("denied");
+      console.error("[useOwner] whoami error", e);
     }
+    publish("denied");
   }
 }
 
