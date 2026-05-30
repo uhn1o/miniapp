@@ -343,14 +343,15 @@ function ModelsTab() {
   const [models, setModels] = useState<AdminModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const r = await adminApi.listModels();
       setModels(r.models);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   };
 
@@ -373,13 +374,28 @@ function ModelsTab() {
   };
 
   const update = async (m: AdminModel, status: AdminModel["status"], pub?: boolean) => {
+    if (busyId) return; // не дублюємо, поки летить попередній запит
+    setBusyId(m.id);
+    const prev = models;
+    // оптимістично оновлюємо лише цей рядок — без спінера й перезавантаження списку
+    setModels((list) =>
+      list.map((x) =>
+        x.id === m.id
+          ? { ...x, status, public: pub === undefined ? x.public : pub ? 1 : 0 }
+          : x,
+      ),
+    );
     try {
       await adminApi.setModel(m.id, status, pub);
       hapticNotify("success");
       invalidateModelsCache();
-      await load();
+      // тихо синхронізуємо з бекендом, без мигання
+      await load({ silent: true });
     } catch {
       hapticNotify("error");
+      setModels(prev); // відкат при помилці
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -409,12 +425,22 @@ function ModelsTab() {
             <ModelRow
               key={m.id}
               model={m}
+              busy={busyId === m.id}
               actions={
                 <>
-                  <ActionBtn onClick={() => update(m, "approved", true)} title="одобрить публично">
+                  <ActionBtn
+                    onClick={() => update(m, "approved", true)}
+                    title="одобрить публично"
+                    disabled={busyId !== null}
+                    loading={busyId === m.id}
+                  >
                     <Check size={14} />
                   </ActionBtn>
-                  <ActionBtn onClick={() => update(m, "hidden")} title="отказать">
+                  <ActionBtn
+                    onClick={() => update(m, "hidden")}
+                    title="отказать"
+                    disabled={busyId !== null}
+                  >
                     <X size={14} />
                   </ActionBtn>
                 </>
@@ -431,8 +457,14 @@ function ModelsTab() {
             <ModelRow
               key={m.id}
               model={m}
+              busy={busyId === m.id}
               actions={
-                <ActionBtn onClick={() => update(m, "hidden")} title="убрать в скрытые">
+                <ActionBtn
+                  onClick={() => update(m, "hidden")}
+                  title="убрать в скрытые"
+                  disabled={busyId !== null}
+                  loading={busyId === m.id}
+                >
                   <Trash2 size={14} />
                 </ActionBtn>
               }
@@ -448,8 +480,14 @@ function ModelsTab() {
             <ModelRow
               key={m.id}
               model={m}
+              busy={busyId === m.id}
               actions={
-                <ActionBtn onClick={() => update(m, "approved", true)} title="вернуть">
+                <ActionBtn
+                  onClick={() => update(m, "approved", true)}
+                  title="вернуть"
+                  disabled={busyId !== null}
+                  loading={busyId === m.id}
+                >
                   <Check size={14} />
                 </ActionBtn>
               }
@@ -463,9 +501,22 @@ function ModelsTab() {
   );
 }
 
-function ModelRow({ model, actions }: { model: AdminModel; actions: React.ReactNode }) {
+function ModelRow({
+  model,
+  actions,
+  busy,
+}: {
+  model: AdminModel;
+  actions: React.ReactNode;
+  busy?: boolean;
+}) {
   return (
-    <div className="surface-soft flex items-center gap-3 rounded-[20px] p-3">
+    <div
+      className={cn(
+        "surface-soft flex items-center gap-3 rounded-[20px] p-3 transition-opacity",
+        busy && "opacity-60",
+      )}
+    >
       <div className="min-w-0 flex-1">
         <p className="truncate font-display text-[14px] font-semibold text-[var(--color-text-strong)]">
           {model.display_name || model.id}
@@ -484,19 +535,24 @@ function ModelRow({ model, actions }: { model: AdminModel; actions: React.ReactN
 function ActionBtn({
   onClick,
   title,
+  disabled,
+  loading,
   children,
 }: {
   onClick: () => void;
   title: string;
+  disabled?: boolean;
+  loading?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
       title={title}
-      className="icon-soft grid h-9 w-9 place-items-center rounded-full"
+      disabled={disabled}
+      className="icon-soft grid h-9 w-9 place-items-center rounded-full disabled:opacity-50"
     >
-      {children}
+      {loading ? <Loader2 size={14} className="animate-spin" /> : children}
     </button>
   );
 }
