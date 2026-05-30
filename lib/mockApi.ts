@@ -91,12 +91,17 @@ export async function* streamReply(
       if (!raw.startsWith("data:")) continue;
       const payload = raw.slice(5).trim();
       if (payload === "[DONE]") return;
+      let obj: unknown;
       try {
-        const obj = JSON.parse(payload);
-        if (obj.error) throw new Error(obj.error);
-        if (typeof obj.delta === "string") yield obj.delta;
-      } catch (e) {
-        if (e instanceof Error && e.message !== payload) throw e;
+        obj = JSON.parse(payload);
+      } catch {
+        // битый/частковий JSON — пропускаємо, не валимо весь стрім
+        continue;
+      }
+      if (obj && typeof obj === "object") {
+        const o = obj as { error?: unknown; delta?: unknown };
+        if (typeof o.error === "string") throw new Error(o.error);
+        if (typeof o.delta === "string") yield o.delta;
       }
     }
   }

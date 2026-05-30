@@ -6,7 +6,7 @@ import { buildModelInfo } from "@/lib/models";
 import type { ModelInfo } from "@/lib/types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8787";
-const BG_REFRESH_MS = 30_000; // тихий рефетч раз на 30с
+const BG_REFRESH_MS = 90_000; // тихий рефетч раз на 90с
 
 interface ApiModel {
   id: string;
@@ -20,6 +20,7 @@ type Status = "loading" | "ready" | "error";
 
 let cache: ModelInfo[] | null = null;
 let inflight: Promise<ModelInfo[]> | null = null;
+let refreshing = false;
 const listeners = new Set<(s: Status, m: ModelInfo[]) => void>();
 let bgTimer: ReturnType<typeof setInterval> | null = null;
 let visListenerInstalled = false;
@@ -28,10 +29,18 @@ function publish(status: Status, models: ModelInfo[]) {
   listeners.forEach((l) => l(status, models));
 }
 
+/** Глибше порівняння: список «не змінився» лише якщо збігаються id, назва, вендор і порядок. */
 function sameList(a: ModelInfo[], b: ModelInfo[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    if (a[i].id !== b[i].id) return false;
+    if (
+      a[i].id !== b[i].id ||
+      a[i].name !== b[i].name ||
+      a[i].vendor !== b[i].vendor ||
+      a[i].family !== b[i].family
+    ) {
+      return false;
+    }
   }
   return true;
 }
@@ -83,6 +92,8 @@ async function load(): Promise<ModelInfo[]> {
 /** Тихий рефетч у фоні: оновлює підписників лише якщо список реально змінився. */
 async function silentRefresh() {
   if (typeof document !== "undefined" && document.hidden) return;
+  if (refreshing) return; // не дублюємо запит (interval + focus + visibilitychange)
+  refreshing = true;
   try {
     const prev = cache;
     const list = await load();
@@ -91,15 +102,15 @@ async function silentRefresh() {
     }
   } catch (e) {
     console.warn("[useModels] silent refresh error", e);
+  } finally {
+    refreshing = false;
   }
 }
 
 function ensureBackgroundRefresh() {
   if (typeof window === "undefined") return;
   if (!visListenerInstalled) {
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) silentRefresh();
-    });
+    document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", silentRefresh);
     visListenerInstalled = true;
   }
@@ -108,16 +119,37 @@ function ensureBackgroundRefresh() {
   }
 }
 
-/** Скинути кеш та одразу перезавантажити для всіх підписників. */
+function onVisible() {
+  if (!document.hidden) silentRefresh();
+}
+
+/** Зупиняє фонове оновлення, коли не лишилось підписників. */
+function teardownBackgroundRefresh() {
+  if (typeof window === "undefined") return;
+  if (bgTimer !== null) {
+    clearInterval(bgTimer);
+    bgTimer = null;
+  }
+  if (visListenerInstalled) {
+    document.removeEventListener("visibilitychange", onVisible);
+    window.removeEventListener("focus", silentRefresh);
+    visListenerInstalled = false;
+  }
+}
+
+/** Скинути кеш та одразу перезавантажити для всіх підписників (без мигання, якщо дані вже є). */
 export function invalidateModelsCache() {
+  const prev = cache;
   cache = null;
   inflight = null;
-  publish("loading", []);
+  if (!prev || prev.length === 0) publish("loading", []);
   load()
-    .then((list) => publish("ready", list))
+    .then((list) => {
+      if (!prev || !sameList(prev, list)) publish("ready", list);
+    })
     .catch((e) => {
       console.error("[useModels] invalidate reload error", e);
-      publish("error", []);
+      if (!prev || prev.length === 0) publish("error", []);
     });
 }
 
@@ -149,17 +181,21 @@ export function useModels(): { models: ModelInfo[]; status: Status; reload: () =
 
     return () => {
       listeners.delete(cb);
+      if (listeners.size === 0) teardownBackgroundRefresh();
     };
   }, []);
 
   const reload = () => {
+    const prev = cache;
     cache = null;
-    publish("loading", []);
+    if (!prev || prev.length === 0) publish("loading", []);
     load()
-      .then((list) => publish("ready", list))
+      .then((list) => {
+        if (!prev || !sameList(prev, list)) publish("ready", list);
+      })
       .catch((e) => {
         console.error("[useModels] reload error", e);
-        publish("error", []);
+        if (!prev || prev.length === 0) publish("error", []);
       });
   };
 

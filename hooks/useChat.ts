@@ -55,11 +55,16 @@ export function useChat() {
         updateMessage(chatId, reply.id, { streaming: false });
         if (settings.hapticsEnabled) hapticNotify("success");
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "error";
-        updateMessage(chatId, reply.id, {
-          content: `⚠️ ${msg}`,
-          streaming: false,
-        });
+        if (ac.signal.aborted) {
+          // зупинено користувачем — лишаємо те, що встигло прийти
+          updateMessage(chatId, reply.id, { streaming: false });
+        } else {
+          const msg = e instanceof Error ? e.message : "error";
+          updateMessage(chatId, reply.id, {
+            content: `⚠️ ${msg}`,
+            streaming: false,
+          });
+        }
       } finally {
         setIsStreaming(false);
         abortRef.current = null;
@@ -102,8 +107,10 @@ export function useChat() {
           updateMessage(activeChat.id, messageId, { content: acc });
         }
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "error";
-        updateMessage(activeChat.id, messageId, { content: `⚠️ ${msg}` });
+        if (!ac.signal.aborted) {
+          const msg = e instanceof Error ? e.message : "error";
+          updateMessage(activeChat.id, messageId, { content: `⚠️ ${msg}` });
+        }
       } finally {
         updateMessage(activeChat.id, messageId, { streaming: false });
         setIsStreaming(false);
